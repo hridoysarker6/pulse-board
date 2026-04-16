@@ -2,64 +2,47 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\DeploymentCheckRequest;
+use App\Http\Resources\DeploymentCheckResource;
 use App\Models\DeploymentCheck;
-use Illuminate\Http\Request;
+use App\Models\Project;
 
 class DeploymentCheckController extends Controller
 {
     /**
-     * Display a listing of the resource.
-     */
-    public function index()
-    {
-        //
-    }
-
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
-    {
-        //
-    }
-
-    /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(Project $project, DeploymentCheckRequest $request)
     {
-        //
+        $validatedData = $request->validated();
+
+        $deploymentCheck = new DeploymentCheck($validatedData);
+        $deploymentCheck->project()->associate($project);
+        $deploymentCheck->save();
+
+        return response()->json([
+            'status' => 201,
+            'message' => 'Deployment check created successfully',
+            'data' => DeploymentCheckResource::make($deploymentCheck),
+        ], 201);
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(DeploymentCheck $deploymentCheck)
+    public function markAsComplete(DeploymentCheck $deploymentCheck)
     {
-        //
-    }
+        if ($deploymentCheck->is_completed) {
+            return response()->json([
+                'status' => 400,
+                'message' => 'Deployment check is already marked as complete',
+            ], 400);
+        }
+        $deploymentCheck->is_completed = true;
+        $deploymentCheck->completed_at = now();
+        $deploymentCheck->save();
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(DeploymentCheck $deploymentCheck)
-    {
-        //
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, DeploymentCheck $deploymentCheck)
-    {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(DeploymentCheck $deploymentCheck)
-    {
-        //
+        return response()->json([
+            'status' => 200,
+            'message' => 'Deployment check marked as complete',
+            'data' => DeploymentCheckResource::make($deploymentCheck),
+        ]);
     }
 }

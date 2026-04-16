@@ -2,8 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\ProjectRequest;
+use App\Http\Resources\ProjectResource;
 use App\Models\Project;
-use Illuminate\Http\Request;
 
 class ProjectController extends Controller
 {
@@ -12,47 +13,48 @@ class ProjectController extends Controller
      */
     public function index()
     {
-        //
-    }
+        $projects = Project::with('deploymentChecks')->orderBy('created_at', 'desc')->get();
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
-    {
-        //
+        return response()->json([
+            'status' => 200,
+            'message' => 'Projects retrieved successfully',
+            'data' => ProjectResource::collection($projects),
+        ], 200);
     }
 
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(ProjectRequest $request)
     {
-        //
+        $validatedData = $request->validated();
+
+        $project = Project::create($validatedData);
+
+        return response()->json([
+            'status' => 201,
+            'message' => 'Project created successfully',
+            'data' => ProjectResource::make($project),
+        ], 201);
     }
 
     /**
      * Display the specified resource.
      */
-    public function show(Project $project)
+    public function readiness(Project $project)
     {
-        //
-    }
+        $deploymentChecks = $project->deploymentChecks()->get();
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(Project $project)
-    {
-        //
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, Project $project)
-    {
-        //
+        return response()->json([
+            'status' => 200,
+            'message' => 'Project readiness retrieved successfully',
+            'data' => [
+                'project' => (string) $project->name,
+                'total_checks' => (int) $deploymentChecks->count(),
+                'completed_checks' => (int) $deploymentChecks->where('is_completed', true)->count(),
+                'is_ready_for_deployment' => (bool) $deploymentChecks->where('is_completed', false)->count() === 0,
+            ],
+        ], 200);
     }
 
     /**
@@ -60,6 +62,11 @@ class ProjectController extends Controller
      */
     public function destroy(Project $project)
     {
-        //
+        $project->delete();
+
+        return response()->json([
+            'status' => 200,
+            'message' => 'Project deleted successfully',
+        ], 200);
     }
 }
